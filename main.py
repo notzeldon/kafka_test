@@ -1,7 +1,10 @@
 import argparse
+import logging
 
 from confluent_kafka import Producer, Consumer, KafkaException
 from confluent_kafka.admin import AdminClient, NewTopic
+
+logging.basicConfig(level=logging.DEBUG)
 
 parser = argparse.ArgumentParser(description="Apache Kafka test app")
 subparsers = parser.add_subparsers(dest='command')
@@ -25,9 +28,9 @@ parser_produce.add_argument('--kafka', type=str)
 
 def delivery_report(err, msg):
     if err is not None:
-        print(f'Message delivery failed: {err}')
+        logging.error(f'Message delivery failed: {err}')
     else:
-        print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
+        logging.info(f'Message delivered to {msg.topic()} [{msg.partition()}]')
 
 
 def run_produce(message: str, topic: str, kafka: str):
@@ -58,7 +61,7 @@ def run_consume(topic: str, kafka: str):
                 raise KafkaException(msg.error())
             else:
                 # действия с полученным сообщением
-                print(f"Received message: {msg.value().decode('utf-8')}")
+                logging.info(f"Received message: {msg.value().decode('utf-8')}")
     except KeyboardInterrupt:
         pass
     finally:
@@ -79,28 +82,26 @@ def run_init(topic: str, kafka: str):
         for topic, future in fs.items():
             try:
                 future.result()  # Блокирует выполнение до завершения
-                print(f"Тема '{topic}' успешно создана.")
+                logging.info(f"Topic '{topic}' created.")
             except Exception as e:
-                print(f"Ошибка при создании темы '{topic}': {e}")
+                logging.error(f"Topic creation failed '{topic}': {e}")
                 return False  # Вернуть False в случае ошибки
 
         return True  # Вернуть True, если все темы созданы успешно
 
     except Exception as e:
-        print(f"Общая ошибка: {e}")
+        logging.error(f"Error: {e}")
         return False
 
     finally:
         pass
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     args = parser.parse_args()
     if args.command == 'produce':
         run_produce(message=args.message, topic=args.topic, kafka=args.kafka)
     elif args.command == 'consume':
-        run_init(topic=args.topic, kafka=args.kafka)
         run_consume(topic=args.topic, kafka=args.kafka)
     elif args.command == 'init':
         run_init(topic=args.topic, kafka=args.kafka)
